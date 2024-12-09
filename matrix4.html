@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pré-visualizador de HTML e PDF - Estilo Matrix</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0d0d2b;
+            color: #00ff00; /* Verde cana estilo Matrix */
+            font-family: 'Courier New', Courier, monospace; /* Estilo de fonte Matrix */
+            overflow: hidden;
+            display: flex;
+        }
+
+        /* Efeito de fundo planetário */
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('https://www.solarsystemscope.com/textures/download/2k_stars.jpg') no-repeat center center/cover;
+            background-size: 200%;
+            animation: moveBackground 20s infinite linear alternate;
+            z-index: -1;
+            opacity: 0.2; /* Deixa o fundo mais sutil para não tirar o foco do conteúdo */
+        }
+
+        @keyframes moveBackground {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 100%; }
+        }
+
+        /* Container principal dividido */
+        .main-container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* Barra lateral com a lista de arquivos PDF e HTML */
+        .file-list {
+            width: 30%;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .file-item {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(3px);
+            padding: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #00ff00; /* Verde Matrix */
+            font-weight: bold;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .file-item:hover {
+            transform: translateX(5px);
+            background: rgba(0, 255, 0, 0.2); /* Hover com verde Matrix */
+        }
+
+        /* Botão para selecionar arquivos */
+        .upload-button {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #00ff00; /* Verde Matrix */
+            color: #0d0d2b;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+
+        .upload-button:hover {
+            background-color: #007d00; /* Efeito de hover mais escuro no verde */
+        }
+
+        /* Área de visualização de PDF e HTML */
+        .viewer-container {
+            width: 70%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative; /* Importante para mover a janela */
+        }
+
+        .viewer-container iframe, .viewer-container object {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Estilo para permitir o redimensionamento */
+        .pdf-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: #222;
+            border-radius: 10px;
+            cursor: move;
+        }
+    </style>
+</head>
+<body>
+
+<div class="background-animation"></div>
+
+<div class="main-container">
+    <!-- Barra lateral para seleção de arquivos PDF e HTML -->
+    <div class="file-list" id="fileList">
+        <label class="upload-button">
+            Selecionar Pasta de Arquivos
+            <input type="file" id="fileInput" accept=".pdf,.html" multiple webkitdirectory style="display: none;">
+        </label>
+        <div id="fileListContainer"></div>
+    </div>
+
+    <!-- Área de visualização do PDF ou HTML -->
+    <div class="viewer-container">
+        <div class="pdf-container" id="pdfContainer" draggable="true">
+            <iframe id="fileViewer" src="" title="Visualizador de Arquivo"></iframe>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const fileList = document.getElementById('fileListContainer');
+    const viewer = document.getElementById('fileViewer');
+    const pdfContainer = document.getElementById('pdfContainer');
+
+    // Função para listar os arquivos PDF e HTML
+    fileInput.addEventListener('change', (event) => {
+        fileList.innerHTML = ''; // Limpa a lista anterior
+        const files = Array.from(event.target.files);
+
+        // Usando Set para evitar redundância
+        const uniqueFiles = new Set(files.map(file => file.name));
+
+        uniqueFiles.forEach((fileName) => {
+            const file = files.find(f => f.name === fileName);
+            if (file && (file.type === 'application/pdf' || file.type === 'text/html')) {
+                const fileItem = document.createElement('div');
+                fileItem.classList.add('file-item');
+                fileItem.textContent = file.name;
+                fileItem.addEventListener('click', () => previewFile(file));
+                fileList.appendChild(fileItem);
+            }
+        });
+    });
+
+    // Função para pré-visualizar o arquivo (PDF ou HTML)
+    function previewFile(file) {
+        const fileURL = URL.createObjectURL(file);
+        
+        if (file.type === 'application/pdf') {
+            viewer.src = fileURL; // Visualiza PDF
+        } else if (file.type === 'text/html') {
+            viewer.src = fileURL; // Visualiza HTML
+        }
+    }
+
+    // Função para permitir que a janela seja movida com o mouse
+    let isMouseDown = false;
+    let offsetX, offsetY;
+
+    pdfContainer.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        offsetX = e.clientX - pdfContainer.getBoundingClientRect().left;
+        offsetY = e.clientY - pdfContainer.getBoundingClientRect().top;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+        const x = e.clientX - offsetX;
+        const y = e.clientY - offsetY;
+        pdfContainer.style.left = `${x}px`;
+        pdfContainer.style.top = `${y}px`;
+    });
+
+    document.addEventListener('mouseup', () => {
+        isMouseDown = false;
+    });
+</script>
+
+</body>
+</html>
